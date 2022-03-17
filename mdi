@@ -2,21 +2,39 @@
 set -e
 cd "$(dirname "$0")"
 
-run() {
-	test -d MaterialDesign-SVG || {
-		git clone https://github.com/Templarian/MaterialDesign-SVG.git
+checkCommand() {
+	command -v "$1" &>/dev/null || {
+		echo "command $1 not found ${2:-}"
+		exit 1
 	}
-	(
-		cd MaterialDesign-SVG
-		git reset --hard
-		git pull
-	) || (
-		rm -rf MaterialDesign-SVG
-		git clone https://github.com/Templarian/MaterialDesign-SVG.git
-	)
-	jq <MaterialDesign-SVG/meta.json \
-		'[.[] | foreach .aliases[] as $alias (.;.;$alias + " " + .name)] + [ .[] | .name + " " + .name] |.[] ' -r |
-		MDI_ACTION=RENDER fzf -n 1 -d" " --with-nth=1 -1 --preview="./mdi {}" -q "$*"
+}
+
+run() {
+	checkCommand fzf
+	checkCommand kitty
+	checkCommand jq
+	checkCommand git
+	checkCommand convert "(from imagemagick)"
+	{
+		test -d MaterialDesign-SVG || {
+			git clone https://github.com/Templarian/MaterialDesign-SVG.git
+		}
+		(
+			cd MaterialDesign-SVG
+			git reset --hard
+			git pull
+		) || (
+			rm -rf MaterialDesign-SVG
+			git clone https://github.com/Templarian/MaterialDesign-SVG.git
+		)
+	} &>/dev/null
+	name="$(
+		jq <MaterialDesign-SVG/meta.json \
+			'[.[] | foreach .aliases[] as $alias (.;.;$alias + " " + .name)] + [ .[] | .name + " " + .name] |.[] ' -r |
+			MDI_ACTION=RENDER fzf -n 1 -d" " --with-nth=1 -1 --preview="./mdi {}" -q "$*"
+	)"
+
+	echo "MDI:$(echo "$name" | sed 's/.* //')"
 }
 
 function renderit() {
