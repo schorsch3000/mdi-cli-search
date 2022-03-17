@@ -32,7 +32,7 @@ run() {
 		jq <MaterialDesign-SVG/meta.json \
 			'[.[] | foreach .aliases[] as $alias (.;.;$alias + " " + .name)] + [ .[] | .name + " " + .name] |.[] ' -r |
 			sort |
-			MDI_ACTION=RENDER fzf -n 1 -d" " --cycle --with-nth=1 -1 --preview="./mdi {}" -q "$*"
+			MDI_ACTION=RENDER fzf -n 1 -d" " --cycle --with-nth=1 -1 --preview="'$0' {}" -q "$*"
 	)"
 
 	echo "MDI:$(echo "$name" | sed 's/.* //')"
