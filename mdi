@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")"
+
+run() {
+	test -d MaterialDesign-SVG || {
+		git clone https://github.com/Templarian/MaterialDesign-SVG.git
+	}
+	(
+		cd MaterialDesign-SVG
+		git reset --hard
+		git pull
+	) || (
+		rm -rf MaterialDesign-SVG
+		git clone https://github.com/Templarian/MaterialDesign-SVG.git
+	)
+	jq <MaterialDesign-SVG/meta.json \
+		'[.[] | foreach .aliases[] as $alias (.;.;$alias + " " + .name)] + [ .[] | .name + " " + .name] |.[] ' -r |
+		MDI_ACTION=RENDER fzf -n 1 -d" " --with-nth=1 -1 --preview="./mdi {}" -q "$*"
+}
+
+function renderit() {
+
+	inputFile="./MaterialDesign-SVG/svg/$(echo "$1" | sed 's/.* //').svg"
+
+	test -f "$inputFile" || {
+		echo "file $inputFile not found"
+		exit 1
+	}
+	outputDir="$HOME/.cache/mdi/"
+	test -d "$outputDir" || mkdir -p "$outputDir"
+	outputFile="$outputDir$(sha256sum "$inputFile" | cut -d' ' -f1).png"
+	test -f "$outputFile" || {
+		convert -density 1200 -size 200x200 "$inputFile" "$outputFile"
+
+	}
+	kitty icat --align right --place "$(tput cols)x$(tput lines)@$(tput cols)x0" --transfer-mode file "$outputFile"
+
+}
+
+case "${MDI_ACTION:-RUN}" in
+RUN)
+	run "$@"
+	;;
+RENDER)
+	renderit "$@"
+	;;
+esac
